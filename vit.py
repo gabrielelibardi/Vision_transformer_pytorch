@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+class GELU(nn.Module):
+    def forward(self, input):
+        return F.gelu(input)
 
 class MLP(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None,
@@ -11,7 +15,7 @@ class MLP(nn.Module):
         if not out_features:
             out_features = in_features
         self.fc1 = nn.Linear(in_features, hidden_features)
-        self.actn = nn.GELU()
+        self.actn = GELU()
         self.fc2 = nn.Linear(hidden_features, out_features)
         self.dropout = nn.Dropout(dropout)
 
@@ -105,8 +109,8 @@ class ViT(nn.Module):
         # Embedding for patch position and class
         self.pos_emb = nn.Parameter(torch.zeros(1, num_patches+1, embed_dim))
         self.cls_emb = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        nn.init.trunc_normal_(self.pos_emb, std=0.2)
-        nn.init.trunc_normal_(self.cls_emb, std=0.2)
+        nn.init.normal_(self.pos_emb, std=0.2)
+        nn.init.normal_(self.cls_emb, std=0.2)
 
         self.drop = nn.Dropout(p=drop_rate)
         self.transfomer = Transformer(depth, embed_dim, num_heads,
@@ -117,7 +121,7 @@ class ViT(nn.Module):
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
-            nn.init.trunc_normal_(m.weight, std=.02)
+            nn.init.normal_(m.weight, std=.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
@@ -127,11 +131,11 @@ class ViT(nn.Module):
     def forward(self, x):
         b = x.shape[0]
         cls_token = self.cls_emb.expand(b, -1, -1)
-
         x = self.patches(x)
         x = torch.cat((cls_token, x), dim=1)
         x += self.pos_emb
         x = self.drop(x)
+        import ipdb; ipdb.set_trace()
         x = self.transfomer(x)
         x = self.norm(x)
         x = self.out(x[:, 0])
